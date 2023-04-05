@@ -65,6 +65,7 @@ class YouTubeChatDownloader(BaseChatDownloader):
 
     _SITE_DEFAULT_PARAMS = {
         'format': 'youtube',
+        'message_groups': ['messages', 'superchat']
     }
 
     _TESTS = [
@@ -442,9 +443,9 @@ class YouTubeChatDownloader(BaseChatDownloader):
 
     _YT_INITIAL_BOUNDARY_RE = r'\s*(?:var\s+(?:meta|head)|</script|\n)'
     _YT_INITIAL_DATA_RE = r'(?:window\s*\[\s*["\']ytInitialData["\']\s*\]|ytInitialData)\s*=\s*({.+?})\s*;' + \
-        _YT_INITIAL_BOUNDARY_RE
+                          _YT_INITIAL_BOUNDARY_RE
     _YT_INITIAL_PLAYER_RESPONSE_RE = r'ytInitialPlayerResponse\s*=\s*({.+?})\s*;' + \
-        _YT_INITIAL_BOUNDARY_RE
+                                     _YT_INITIAL_BOUNDARY_RE
     _YT_CFG_RE = r'ytcfg\.set\s*\(\s*({.+?})\s*\)\s*;'
 
     _YT_HOME = 'https://www.youtube.com'
@@ -467,6 +468,7 @@ class YouTubeChatDownloader(BaseChatDownloader):
 
             # Gifts
             'sponsorships_gift_purchase_announcement',
+            'sponsorships_gift_redemption_announcement'
         ],
         'tickers': [
             # superchat messages which appear ticker (at the top)
@@ -1140,7 +1142,7 @@ class YouTubeChatDownloader(BaseChatDownloader):
             section_info = section['itemSectionRenderer']['contents'][0]['shelfRenderer']
 
             playlist_url = self._YT_HOME + \
-                section_info['endpoint']['commandMetadata']['webCommandMetadata']['url']
+                           section_info['endpoint']['commandMetadata']['webCommandMetadata']['url']
 
             yield from self.get_playlist_items(playlist_url)
 
@@ -1522,7 +1524,7 @@ class YouTubeChatDownloader(BaseChatDownloader):
 
         if not details['duration'] and details['start_time'] and details['end_time']:
             details['duration'] = (
-                details['end_time'] - details['start_time'])/1e6
+                                      details['end_time'] - details['start_time'])/1e6
 
         # Parse continuation info
         sub_menu_items = multi_get(yt_initial_data, 'contents', 'twoColumnWatchNextResults', 'conversationBar', 'liveChatRenderer',
@@ -1570,7 +1572,7 @@ class YouTubeChatDownloader(BaseChatDownloader):
                     error_reasons[error_reason] = text.get('simpleText') or self._parse_runs(
                         text, False)['message'] or error_info.pop(
                         'itemTitle', '') or error_info.pop(
-                            'offerDescription', '') or playability_status.get(error_reason) or ''
+                        'offerDescription', '') or playability_status.get(error_reason) or ''
 
                 error_message = ''
                 for error_reason in error_reasons:
@@ -1605,7 +1607,7 @@ class YouTubeChatDownloader(BaseChatDownloader):
                 error_message = multi_get(popup_info, 'title', 'simpleText')
                 dialog_messages = multi_get(popup_info, 'dialogMessages') or []
                 error_message += '. ' + \
-                    ' '.join(map(lambda x: x.get('simpleText'), dialog_messages))
+                                 ' '.join(map(lambda x: x.get('simpleText'), dialog_messages))
                 raise VideoUnavailable(error_message)
             elif not yt_initial_data.get('contents'):
                 log('debug', f'Initial YouTube data: {yt_initial_data}')
@@ -1717,7 +1719,7 @@ class YouTubeChatDownloader(BaseChatDownloader):
         messages_types_to_add = params.get('message_types') or []
 
         invalid_groups = set(messages_groups_to_add) - \
-            self._MESSAGE_GROUPS.keys()
+                         self._MESSAGE_GROUPS.keys()
         if 'all' not in messages_groups_to_add and invalid_groups:
             raise InvalidParameter(
                 f'Invalid groups specified: {invalid_groups}')

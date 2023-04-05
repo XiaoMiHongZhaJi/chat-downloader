@@ -2,7 +2,7 @@
 import sys
 import itertools
 import time
-import json
+import pymysql
 
 from urllib.parse import urlparse
 
@@ -32,7 +32,6 @@ from .debugging import (
 
 from .output.continuous_write import ContinuousWriter
 
-
 from requests.exceptions import (
     RequestException,
     ConnectionError
@@ -48,7 +47,7 @@ from .errors import (
 )
 
 
-class ChatDownloader():
+class ChatDownloader:
     """Class used to create sessions and download chats."""
 
     def __init__(self,
@@ -61,7 +60,7 @@ class ChatDownloader():
 
         :param headers: Headers to use for subsequent requests, defaults to None
         :type headers: dict, optional
-        :param cookies: Path of cookies file, defaults to None
+        :param cookies: Path of cookies files, defaults to None
         :type cookies: str, optional
         :param proxy: Use the specified HTTP/HTTPS/SOCKS proxy. To enable SOCKS
             proxy, specify a proper scheme. For example socks5://127.0.0.1:1080/.
@@ -98,6 +97,7 @@ class ChatDownloader():
                  overwrite=True,
                  sort_keys=True,
                  indent=4,
+                 live_date=None,
 
                  # Formatting
                  format=SiteDefault('format'),
@@ -108,7 +108,7 @@ class ChatDownloader():
                  ignore=None,
 
                  # Twitch
-                 message_receive_timeout=0.1,
+                 message_receive_timeout=1,
                  buffer_size=4096
                  ):
         """Used to get chat messages from a livestream, video, clip or past broadcast.
@@ -149,6 +149,8 @@ class ChatDownloader():
         :param output: Path of the output file, defaults to None (print to
             standard output)
         :type output: str, optional
+        :param live_date: date of live
+        :type live_date: str, optional
         :param overwrite: If True, overwrite output file. Otherwise, append
             to the end of the file. Defaults to True. In both cases, the file
             (and directories) is created if it does not exist.
@@ -347,6 +349,18 @@ def run(propagate_interrupt=False, **kwargs):
 
     downloader = ChatDownloader(**init_params)
 
+    live_date = chat_params.get("live_date")
+    host = "192.168.100.10"
+    user = "root"
+    password = "5267373"
+    database = "yt_live_chat_analyse"
+    if live_date is None:
+        live_date = time.strftime('%Y-%m-%d', time.localtime(time.time()))
+    # 打开数据库连接
+    db = pymysql.connect(user=user, password=password, host=host, database=database)
+    # 使用cursor()方法获取操作游标
+    cursor = db.cursor()
+    delete_old = True
     try:
         chat = downloader.get_chat(**chat_params)
 
@@ -356,8 +370,74 @@ def run(propagate_interrupt=False, **kwargs):
         else:
             def callback(item):
                 chat.print_formatted(item)
-
         for message in chat:
+            try:
+                author = message.get("author")
+                display_name = author.get("display_name")
+                name = author.get("name")
+                message_text = message.get("message")
+                time_in_seconds = message.get("time_in_seconds")
+                time_text = message.get("time_text")
+                timestamp = message.get("timestamp")
+                money = message.get("money")
+                emotes = message.get("emotes")
+                emotes_count = 0
+                if emotes is not None:
+                    emotes_count = len(emotes)
+                    # 插入emotes_data表。后期emotes数据全了之后可以注释掉
+                    # for emote in emotes:
+                    #     emote_name = emote.get("name").replace(':', '')
+                    #     cursor.execute("select 1 from emotes_data where name = '" + emote_name + "'")
+                    #     if cursor.fetchone() is None:
+                    #         emote_sql = "insert into emotes_data(emotes_id, images, is_custom_emoji, name) values ('"
+                    #         emote_sql += emote.get("id") + "','"
+                    #         emote_sql += (emote.get("images")[0].get("url") if emote.get("images") is not None else "") + "',"
+                    #         emote_sql += "1,'" if emote.get("is_custom_emoji") else "0,'"
+                    #         emote_sql += emote_name + "')"
+                    #         cursor.execute(emote_sql)
+                # SQL 插入语句
+                sql = "insert into live_chat_data"
+                if time_in_seconds is None:
+                    sql = "insert into living_chat_data"
+                    if delete_old:
+                        cursor.execute("delete from living_chat_data " + " where live_date = '" + live_date + "' and timestamp >= " + str(timestamp))
+                        db.commit()
+                        delete_old = False
+                sql += "(live_date, author_image, author_name, author_id, message, sc_info, sc_amount, time_in_seconds, time_text, timestamp, emotes_count) "
+                sql += "values ('"
+                sql += live_date + "',"
+                if author.get("images") is not None:
+                    sql += "'" + author.get("images")[0].get("url") + "','"
+                else:
+                    sql += "null,'"
+                if display_name is not None:
+                    sql += display_name.replace("'", "\\'")
+                else:
+                    sql += name.replace("'", "\\'")
+                sql += "','"
+                sql += author.get("id") + "','"
+                sql += message_text.replace("'", "\\'") + "',"
+                if money is not None:
+                    sql += "'" + money.get("text") + " " + message.get("body_background_colour") + "','"
+                    sql += money.get("currency") + " " + str(money.get("amount")) + "',"
+                else:
+                    sql += "null,null,"
+                if time_in_seconds is not None:
+                    sql += str(time_in_seconds) + ",'"
+                    sql += str(time_text) + "',"
+                else:
+                    sql += "null,null,"
+                sql += str(timestamp) + ","
+                if emotes_count > 0:
+                    sql += str(emotes_count) + ")"
+                else:
+                    sql += "null)"
+                # 执行sql语句
+                cursor.execute(sql)
+                # 提交到数据库执行
+                db.commit()
+            except Exception as e:
+                print(e)
             callback(message)
 
         log('info', 'Finished retrieving chat messages.')
@@ -384,6 +464,12 @@ def run(propagate_interrupt=False, **kwargs):
             raise e
         else:
             log('error', 'Keyboard Interrupt')
+    else:  # No exceptions raised
+        return
 
     finally:
         downloader.close()
+        # 关闭数据库连接
+        db.close()
+
+    return 1

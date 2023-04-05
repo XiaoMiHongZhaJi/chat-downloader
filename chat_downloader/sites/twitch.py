@@ -49,9 +49,22 @@ class TwitchError(SiteError):
 
 class TwitchChatIRC():
 
-    def __init__(self):
-        # create new socket
-        self.socket = socket.socket()
+    def __init__(self, proxy=None):
+
+        if proxy is not None:
+            # use pysocks when needed
+            import socks
+            from urllib.parse import urlparse
+            proxy_url = urlparse(proxy)
+            self.socket = socks.socksocket()
+            scheme = socks.HTTP
+            if proxy_url.scheme == "socks4" or proxy_url.scheme == "socks":
+                scheme = socks.SOCKS4
+            if proxy_url.scheme == "socks5":
+                scheme = socks.SOCKS5
+            self.socket.set_proxy(scheme, proxy_url.hostname, proxy_url.port)
+        else:
+            self.socket = socket.socket()
 
         # start connection
         self.socket.connect(('irc.chat.twitch.tv', 6667))
@@ -97,6 +110,8 @@ class TwitchChatDownloader(BaseChatDownloader):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
+        self.proxy = kwargs["proxy"]
 
         # Only get badge info if not already retrieved
         # TODO add argument (no_badges)
@@ -888,7 +903,6 @@ class TwitchChatDownloader(BaseChatDownloader):
         'language': 'language',
         'curator': r('curator', _parse_user),
         'game': r('game', _parse_game),
-        'language': 'language',
         'broadcaster': r('broadcaster', _parse_user),
 
         'thumbnailURL': 'thumbnail_url',
@@ -1523,7 +1537,7 @@ class TwitchChatDownloader(BaseChatDownloader):
         def create_connection():
             for attempt_number in attempts(max_attempts):
                 try:
-                    irc = TwitchChatIRC()
+                    irc = TwitchChatIRC(self.proxy)
                     irc.set_timeout(message_receive_timeout)
                     irc.join_channel(stream_id)
                     return irc
