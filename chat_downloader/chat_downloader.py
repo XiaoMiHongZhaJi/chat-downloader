@@ -414,9 +414,11 @@ def run(propagate_interrupt=False, **kwargs):
                     sql += display_name.replace("'", "\\'")
                 else:
                     sql += name.replace("'", "\\'")
-                sql += "','"
-                sql += author.get("id") + "','"
-                sql += message_text.replace("'", "\\'") + "',"
+                sql += "','" + author.get("id") + "',"
+                if message_text is not None:
+                    sql += "'" + message_text.replace("'", "\\'") + "',"
+                else:
+                    sql += "null,"
                 if money is not None:
                     sql += "'" + money.get("text") + " " + message.get("body_background_colour") + "','"
                     sql += money.get("currency") + " " + str(money.get("amount")) + "',"
