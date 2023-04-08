@@ -16,7 +16,6 @@ from .sites import get_all_sites
 
 from .formatting.format import ItemFormatter
 from .utils.core import (
-    safe_print,
     get_default_args,
     update_dict_without_overwrite
 )
@@ -420,7 +419,12 @@ def run(propagate_interrupt=False, **kwargs):
                 else:
                     sql += "null,"
                 if money is not None:
-                    sql += "'" + money.get("text") + " " + message.get("body_background_colour") + "','"
+                    color = message.get("header_background_colour")
+                    if color is None:
+                        color = message.get("background_colour")
+                    if color is None:
+                        color = ''
+                    sql += "'" + money.get("text").replace(" ", " ") + " " + color + "','"
                     sql += money.get("currency") + " " + str(money.get("amount")) + "',"
                 else:
                     sql += "null,null,"
@@ -439,7 +443,7 @@ def run(propagate_interrupt=False, **kwargs):
                 # 提交到数据库执行
                 db.commit()
             except Exception as e:
-                print(e)
+                log('error', e)
             callback(message)
 
         log('info', 'Finished retrieving chat messages.')
