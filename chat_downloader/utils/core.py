@@ -401,6 +401,8 @@ def safe_path(text, replace_char='_'):
     """Ensure generated file name/path is safe
     https://stackoverflow.com/a/31976060
     """
+    if text is None:
+        return ""
     return re.sub(r'[\/:*?"<>|]', replace_char, text)
 
 
