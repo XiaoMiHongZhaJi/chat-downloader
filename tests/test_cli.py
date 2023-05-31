@@ -16,6 +16,8 @@ class TestCLI(unittest.TestCase):
     """
 
     def test_cli(self):
-        url = 'https://www.youtube.com/watch?v=vok_JvSQ-58'
-        args = [url, '--output', 'test.json']
+        url = 'https://www.twitch.tv/luoshushu67373'
+        url = 'https://www.youtube.com/watch?v=kgx4WGK0oNU'
+        url = 'https://www.twitch.tv/thebs_chen'
+        args = [url, '--output', 'test.json', '--proxy', 'http://192.168.100.30:7890']
         main(args)
