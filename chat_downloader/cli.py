@@ -88,6 +88,7 @@ def main(cli_args=None):
     add_chat_param(time_group, '--start_time', '-s')
     add_chat_param(time_group, '--end_time', '-e')
     add_chat_param(time_group, '--live_date')
+    add_chat_param(time_group, '--database')
 
     # Specify message types/groups
     type_group = parser.add_argument_group('Message Type Arguments')

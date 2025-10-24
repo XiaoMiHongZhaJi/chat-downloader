@@ -22,7 +22,7 @@ requirements = [
     'colorlog',
     'websocket-client',
     'pysocks',
-    'pymysql'
+    'psycopg2-binary'
 ]
 
 setup(
