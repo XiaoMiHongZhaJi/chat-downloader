@@ -420,7 +420,7 @@ def run(propagate_interrupt=False, **kwargs):
     return 1
 
 
-def insert_emotes_data(cursor, emotes):
+def insert_emotes_data(db, cursor, emotes):
     for emote in emotes:
         try:
             emote_id = emote.get("id")
@@ -436,7 +436,7 @@ def insert_emotes_data(cursor, emotes):
                     INSERT INTO emotes_data (emotes_id, images, is_custom_emoji, name)
                     VALUES (%s, %s, %s, %s)
                 """
-                values = (emote_id, image_url, 1 if is_custom else 0, emote_name)
+                values = (emote_id, image_url, True if is_custom else False, emote_name)
                 cursor.execute(insert_sql, values)
         except Exception as e:
             db.rollback()
@@ -467,7 +467,7 @@ def insert_db(db, cursor, live_date, message):
         emotes_count = None
         if emotes:
             emotes_count = len(emotes)
-            insert_emotes_data(cursor, emotes)
+            insert_emotes_data(db, cursor, emotes)
 
         # 金额信息
         sc_info = None
